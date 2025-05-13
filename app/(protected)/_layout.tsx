@@ -26,6 +26,12 @@ const ProtectedLayout = () => {
           presentation: "modal",
         }}
       />
+      <Stack.Screen
+        name="(modals)/chat/[id]"
+        options={{
+          presentation: "modal",
+        }}
+      />
     </Stack>
   );
 };

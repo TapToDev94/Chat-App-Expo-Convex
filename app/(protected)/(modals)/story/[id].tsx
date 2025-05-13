@@ -4,7 +4,7 @@ import { useTheme } from "@/context/theme-context";
 import { api } from "@/convex/_generated/api";
 import { useProfile } from "@/hooks/use-profile";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
@@ -22,6 +22,7 @@ const StoryView = () => {
   const userStories = useQuery(api.stories.getStories, {
     friends: [id as string],
   });
+  const markStoryAsViewed = useMutation(api.stories.markStoryAsViewed);
 
   useEffect(() => {
     if (userStories && id) {
@@ -41,6 +42,14 @@ const StoryView = () => {
       setStories(sortedStories as unknown as Story[]);
     }
   }, [userStories, id, user]);
+
+  useEffect(() => {
+    if (stories.length > 0 && user && currentStoryIndex < stories.length) {
+      const currentStory = stories[currentStoryIndex];
+
+      markStoryAsViewed({ storyId: currentStory._id });
+    }
+  }, [currentStoryIndex, stories, user]);
 
   // Handle story progress and navigation
   useEffect(() => {

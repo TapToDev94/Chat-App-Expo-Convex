@@ -28,6 +28,7 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     combinedUserIds: v.optional(v.string()),
+    image: v.optional(v.string()),
   })
     .index("by_combined_user_ids", ["combinedUserIds"])
     .index("by_participants", ["participants"])
@@ -42,7 +43,7 @@ export default defineSchema({
         v.object({
           storageId: v.string(),
           type: v.string(),
-          mineType: v.optional(v.string()),
+          mimeType: v.optional(v.string()),
           fileSize: v.optional(v.number()),
           fileName: v.optional(v.string()),
           duration: v.optional(v.number()),

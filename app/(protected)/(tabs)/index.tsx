@@ -1,17 +1,29 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useQuery } from "convex/react";
+import { FlatList, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
 import { ChatItem } from "@/components/chat-item";
 import { Loader } from "@/components/loader";
 import { NewChatButton } from "@/components/new-chat-button";
 import { Stories } from "@/components/stories";
 import { useTheme } from "@/context/theme-context";
-import { chatData } from "@/dummyData";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { FlatList, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { api } from "@/convex/_generated/api";
 
 const Index = () => {
   const { isDark } = useTheme();
+  const chats = useQuery(api.chats.getChats, {});
+  const isLoading = chats === undefined;
 
-  const isLoading = false;
+  const formattedChats = chats?.map((chat) => ({
+    _id: chat._id,
+    name: chat.name,
+    image: chat.image,
+    lastMessage: chat.lastMessage,
+    unreadCount: chat.unreadCount || 0,
+    participantsInfo: chat.participantsInfo,
+    isGroup: chat.isGroup,
+  }));
 
   return (
     <SafeAreaView className={`flex-1 ${isDark ? "bg-gray-900" : "bg-white"}`}>
@@ -29,7 +41,7 @@ const Index = () => {
         <Loader />
       ) : (
         <FlatList
-          data={chatData}
+          data={formattedChats}
           renderItem={({ item }) => <ChatItem item={item as any} />}
           keyExtractor={(item) => item._id}
           className={isDark ? "bg-gray-900" : "bg-white"}

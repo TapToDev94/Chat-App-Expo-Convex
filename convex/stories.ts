@@ -1,8 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { getCurrentUserOrThrow, getUserById } from "./users";
-import { getMedialURL } from "./general";
 import { Id } from "./_generated/dataModel";
+import { internalMutation, mutation, query } from "./_generated/server";
+import { getCurrentUserOrThrow, getUserById } from "./users";
 
 export const createStory = mutation({
   args: {
@@ -55,28 +54,30 @@ export const getStories = query({
 
     const now = Date.now();
 
-    const friendsId = args.friends?.length
-      ? args.friends
-      : [user._id, ...(user?.friends ?? [])];
+    // Combine the current user ID and their friends' IDs
+    const friendsId = [user?._id, ...(user?.friends ?? [])];
 
-    const storiesPromises = friendsId.map((friend) =>
+    // Query stories for each user in parallel
+    const storiesPromises = friendsId.map((friendId) =>
       ctx.db
         .query("stories")
-        .withIndex("by_user", (q) => q.eq("userId", friend))
-        .filter((q) => q.gte(q.field("expiresAt"), now))
+        .withIndex("by_user", (q) => q.eq("userId", friendId as Id<"users">))
+        .filter((q) => q.gt(q.field("expiresAt"), now))
         .collect()
     );
 
-    const storiesRaw = await Promise.all(storiesPromises);
+    // Wait for all queries to complete
+    const storiesArrays = await Promise.all(storiesPromises);
 
-    const stories = storiesRaw.flat();
+    // Flatten the array of arrays into a single array
+    const stories = storiesArrays.flat();
 
-    //   get media links
+    // Get media for each story
     const storyWithMedia = await Promise.all(
       stories.map(async (story) => {
         const [media, user] = await Promise.all([
-          ctx.storage.getUrl(story.content.storageId as Id<"_storage">),
-          getUserById(ctx, story.userId as Id<"users">),
+          ctx.storage.getUrl(story?.content?.storageId as Id<"_storage">),
+          getUserById(ctx, story?.userId as Id<"users">),
         ]);
 
         return {
@@ -85,13 +86,12 @@ export const getStories = query({
             ...story.content,
             media,
           },
-
           user: user,
         };
       })
     );
 
-    //group stories by user
+    // Group stories by user
     const storiesByUser = storyWithMedia.reduce(
       (acc, story) => {
         if (!acc[story.userId]) {
@@ -103,11 +103,62 @@ export const getStories = query({
       {} as Record<string, typeof stories>
     );
 
-    // sort stories by sequence
+    // Sort stories by sequence within each user's group
     Object.keys(storiesByUser).forEach((userId) => {
       storiesByUser[userId].sort((a, b) => a.sequence - b.sequence);
     });
 
     return storiesByUser;
+  },
+});
+
+export const markStoryAsViewed = mutation({
+  args: {
+    storyId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
+    const story = await ctx.db.get(args.storyId as Id<"stories">);
+
+    if (!story) {
+      throw new Error("Story not found");
+    }
+
+    if (story.viewers.includes(user._id)) {
+      return;
+    }
+
+    if (!story.isActive && !story.viewers.includes(user._id)) {
+      await ctx.db.patch(args.storyId as Id<"stories">, {
+        viewers: [...story.viewers, user._id],
+      });
+    }
+
+    return { success: true };
+  },
+});
+
+export const deleteExpiredStories = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+
+    // get all expired stories
+    const expiredStories = await ctx.db
+      .query("stories")
+      .filter((q) => q.lt(q.field("expiresAt"), now))
+      .collect();
+
+    // delete each image
+    for (const story of expiredStories) {
+      if (story.content.storageId) {
+        await ctx.storage.delete(story.content.storageId as Id<"_storage">);
+      }
+
+      await ctx.db.delete(story._id as Id<"stories">);
+    }
+    console.log(`Deleted ${expiredStories.length} expired stories`);
+    return `Deleted ${expiredStories.length} expired stories`;
   },
 });

@@ -2,6 +2,7 @@ import { useTheme } from "@/context/theme-context";
 import { Id } from "@/convex/_generated/dataModel";
 import { NoImage } from "@/dummyData";
 import { formatDistanceToNow } from "date-fns";
+import { router } from "expo-router";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
 interface Chat {
@@ -53,7 +54,7 @@ export const ChatItem = ({ item }: { item: Chat }) => {
   return (
     <TouchableOpacity
       className={`flex-row items-center px-4 py-3 border-b ${isDark ? "border-gray-800" : "border-gray-200"}`}
-      onPress={() => {}}
+      onPress={() => router.push(`/chat/${item._id}`)}
     >
       <View className="mr-3">
         <Image
@@ -93,8 +94,8 @@ export const ChatItem = ({ item }: { item: Chat }) => {
             {getMessagePreview()}
           </Text>
           {item?.unreadCount > 0 && (
-            <View className="items-center justify-center bg-blue-500 w-6 h-6 rounded-full text-xs">
-              <Text className="text-white font-semibold text-xs text-center">
+            <View className="items-center justify-center w-6 h-6 text-xs bg-blue-500 rounded-full">
+              <Text className="text-xs font-semibold text-center text-white">
                 {item?.unreadCount > 99 ? "99+" : item?.unreadCount}
               </Text>
             </View>

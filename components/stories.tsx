@@ -1,7 +1,3 @@
-import { useTheme } from "@/context/theme-context";
-import { api } from "@/convex/_generated/api";
-import { Doc, Id } from "@/convex/_generated/dataModel";
-import { useProfile } from "@/hooks/use-profile";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "convex/react";
 import * as ImagePicker from "expo-image-picker";
@@ -15,6 +11,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+import { useTheme } from "@/context/theme-context";
+import { api } from "@/convex/_generated/api";
+import { Doc, Id } from "@/convex/_generated/dataModel";
+import { useProfile } from "@/hooks/use-profile";
 
 export interface Story {
   _id: Id<"stories"> | string;
@@ -200,19 +201,16 @@ const StoryItem = ({
   return (
     <View className="items-center mr-4">
       <View className="flex-row">
-        {sortedStories?.map((story) => (
+        {/* Show only the first story as a preview */}
+        {sortedStories.slice(0, 1).map((story, index) => (
           <TouchableOpacity
+            onPress={() => router.push(`/story/${story.userId}`)}
             key={story._id}
-            className={`w-16 h-16 rounded-full items-center justify-center border-2 overflow-hidden ${hasUserViewedStory ? "border-blue-500" : "border-gray-300"}`}
-            onPress={() =>
-              router.push({
-                pathname: "/story/[id]",
-                params: {
-                  id: userInfo._id,
-                },
-              })
-            }
+            className={`w-16 h-16 rounded-full ${
+              hasUserViewedStory ? "border-blue-500" : "border-gray-300"
+            } border-2 items-center justify-center overflow-hidden ${index > 0 ? "-ml-4" : ""}`}
           >
+            {/* Show image or text story preview */}
             {story.type === "image" ? (
               <Image
                 source={{ uri: story.content.media }}
@@ -222,9 +220,12 @@ const StoryItem = ({
           </TouchableOpacity>
         ))}
       </View>
-
-      <Text className={`text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>
-        {isMyStory ? "Your Story" : userInfo.name}
+      {/* Show user name or 'Your Story' */}
+      <Text
+        numberOfLines={1}
+        className={`text-sm mt-1 ${isDark ? "text-gray-300" : "text-gray-900"}`}
+      >
+        {isMyStory ? "Your Story" : (userInfo?.name ?? "User's Story")}
       </Text>
     </View>
   );
